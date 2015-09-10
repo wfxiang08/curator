@@ -20,13 +20,13 @@ package org.apache.curator.ensemble.fixed;
 
 import com.google.common.base.Preconditions;
 import org.apache.curator.ensemble.EnsembleProvider;
+
 import java.io.IOException;
 
 /**
  * Standard ensemble provider that wraps a fixed connection string
  */
-public class FixedEnsembleProvider implements EnsembleProvider
-{
+public class FixedEnsembleProvider implements EnsembleProvider {
     private final String connectionString;
 
     /**
@@ -34,26 +34,22 @@ public class FixedEnsembleProvider implements EnsembleProvider
      *
      * @param connectionString connection string
      */
-    public FixedEnsembleProvider(String connectionString)
-    {
+    public FixedEnsembleProvider(String connectionString) {
         this.connectionString = Preconditions.checkNotNull(connectionString, "connectionString cannot be null");
     }
 
     @Override
-    public void start() throws Exception
-    {
+    public void start() throws Exception {
         // NOP
     }
 
     @Override
-    public void close() throws IOException
-    {
+    public void close() throws IOException {
         // NOP
     }
 
     @Override
-    public String getConnectionString()
-    {
+    public String getConnectionString() {
         return connectionString;
     }
 }

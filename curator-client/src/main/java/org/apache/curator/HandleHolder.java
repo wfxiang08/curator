@@ -24,25 +24,25 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
-class HandleHolder
-{
+/**
+ * 持有zk, closeReset, closeClear
+ */
+class HandleHolder {
     private final ZookeeperFactory zookeeperFactory;
     private final Watcher watcher;
-    private final EnsembleProvider ensembleProvider;
+    private final EnsembleProvider ensembleProvider; // 就当做一个简单的字符串使用: Connection String
     private final int sessionTimeout;
     private final boolean canBeReadOnly;
 
     private volatile Helper helper;
 
-    private interface Helper
-    {
+    private interface Helper {
         ZooKeeper getZooKeeper() throws Exception;
-        
+
         String getConnectionString();
     }
 
-    HandleHolder(ZookeeperFactory zookeeperFactory, Watcher watcher, EnsembleProvider ensembleProvider, int sessionTimeout, boolean canBeReadOnly)
-    {
+    HandleHolder(ZookeeperFactory zookeeperFactory, Watcher watcher, EnsembleProvider ensembleProvider, int sessionTimeout, boolean canBeReadOnly) {
         this.zookeeperFactory = zookeeperFactory;
         this.watcher = watcher;
         this.ensembleProvider = ensembleProvider;
@@ -50,61 +50,59 @@ class HandleHolder
         this.canBeReadOnly = canBeReadOnly;
     }
 
-    ZooKeeper getZooKeeper() throws Exception
-    {
+    ZooKeeper getZooKeeper() throws Exception {
         return (helper != null) ? helper.getZooKeeper() : null;
     }
 
-    String  getConnectionString()
-    {
+    String getConnectionString() {
         return (helper != null) ? helper.getConnectionString() : null;
     }
 
-    boolean hasNewConnectionString() 
-    {
+    // 可认为总是返回 false
+    boolean hasNewConnectionString() {
+        // helper中记录的，和ensembleProvider中记录的不一致时，就是出现新的Connection String
         String helperConnectionString = (helper != null) ? helper.getConnectionString() : null;
         return (helperConnectionString != null) && !ensembleProvider.getConnectionString().equals(helperConnectionString);
     }
 
-    void closeAndClear() throws Exception
-    {
+    void closeAndClear() throws Exception {
         internalClose();
         helper = null;
     }
 
-    void closeAndReset() throws Exception
-    {
+    // 启动的动作: closeAndReset
+    void closeAndReset() throws Exception {
         internalClose();
 
         // first helper is synchronized when getZooKeeper is called. Subsequent calls
         // are not synchronized.
-        helper = new Helper()
-        {
+        // 语义上就是通过Helper获取一个Zookeeper, 可能有异常
+        helper = new Helper() {
             private volatile ZooKeeper zooKeeperHandle = null;
             private volatile String connectionString = null;
 
+
+            // 这个是什么技巧：先同步，后不控制?
             @Override
-            public ZooKeeper getZooKeeper() throws Exception
-            {
-                synchronized(this)
-                {
-                    if ( zooKeeperHandle == null )
-                    {
-                        connectionString = ensembleProvider.getConnectionString();
+            public ZooKeeper getZooKeeper() throws Exception {
+                // 延迟创建
+                synchronized (this) {
+                    if (zooKeeperHandle == null) {
+                        connectionString = ensembleProvider.getConnectionString(); // 废话
+
+                        // 饶了一大圈，还是简单地创建一个zk
+                        // 创建过程中，可能出现连接错误，例如: 其中的一个zk挂了?
                         zooKeeperHandle = zookeeperFactory.newZooKeeper(connectionString, sessionTimeout, watcher, canBeReadOnly);
                     }
 
-                    helper = new Helper()
-                    {
+                    helper = new Helper() {
                         @Override
-                        public ZooKeeper getZooKeeper() throws Exception
-                        {
+                        public ZooKeeper getZooKeeper() throws Exception {
                             return zooKeeperHandle;
                         }
 
                         @Override
-                        public String getConnectionString()
-                        {
+                        public String getConnectionString() {
                             return connectionString;
                         }
                     };
@@ -114,33 +112,26 @@ class HandleHolder
             }
 
             @Override
-            public String getConnectionString()
-            {
+            public String getConnectionString() {
                 return connectionString;
             }
         };
     }
 
-    private void internalClose() throws Exception
-    {
-        try
-        {
+    private void internalClose() throws Exception {
+        try {
             ZooKeeper zooKeeper = (helper != null) ? helper.getZooKeeper() : null;
-            if ( zooKeeper != null )
-            {
-                Watcher dummyWatcher = new Watcher()
-                {
+            if (zooKeeper != null) {
+                // 通过空的Watcher, 来clear已有的Watcher
+                Watcher dummyWatcher = new Watcher() {
                     @Override
-                    public void process(WatchedEvent event)
-                    {
+                    public void process(WatchedEvent event) {
                     }
                 };
                 zooKeeper.register(dummyWatcher);   // clear the default watcher so that no new events get processed by mistake
                 zooKeeper.close();
             }
-        }
-        catch ( InterruptedException dummy )
-        {
+        } catch (InterruptedException dummy) {
             Thread.currentThread().interrupt();
         }
     }

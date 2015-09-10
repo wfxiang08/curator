@@ -35,19 +35,18 @@ import org.apache.curator.utils.ZKPaths;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Op;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 
-class DeleteBuilderImpl implements DeleteBuilder, BackgroundOperation<String>
-{
+class DeleteBuilderImpl implements DeleteBuilder, BackgroundOperation<String> {
     private final CuratorFrameworkImpl client;
     private int version;
     private Backgrounding backgrounding;
     private boolean deletingChildrenIfNeeded;
     private boolean guaranteed;
 
-    DeleteBuilderImpl(CuratorFrameworkImpl client)
-    {
+    DeleteBuilderImpl(CuratorFrameworkImpl client) {
         this.client = client;
         version = -1;
         backgrounding = new Backgrounding();
@@ -55,21 +54,17 @@ class DeleteBuilderImpl implements DeleteBuilder, BackgroundOperation<String>
         guaranteed = false;
     }
 
-    TransactionDeleteBuilder asTransactionDeleteBuilder(final CuratorTransactionImpl curatorTransaction, final CuratorMultiTransactionRecord transaction)
-    {
-        return new TransactionDeleteBuilder()
-        {
+    TransactionDeleteBuilder asTransactionDeleteBuilder(final CuratorTransactionImpl curatorTransaction, final CuratorMultiTransactionRecord transaction) {
+        return new TransactionDeleteBuilder() {
             @Override
-            public CuratorTransactionBridge forPath(String path) throws Exception
-            {
+            public CuratorTransactionBridge forPath(String path) throws Exception {
                 String fixedPath = client.fixForNamespace(path);
                 transaction.add(Op.delete(fixedPath, version), OperationType.DELETE, path);
                 return curatorTransaction;
             }
 
             @Override
-            public Pathable<CuratorTransactionBridge> withVersion(int version)
-            {
+            public Pathable<CuratorTransactionBridge> withVersion(int version) {
                 DeleteBuilderImpl.this.withVersion(version);
                 return this;
             }
@@ -77,110 +72,89 @@ class DeleteBuilderImpl implements DeleteBuilder, BackgroundOperation<String>
     }
 
     @Override
-    public ChildrenDeletable guaranteed()
-    {
+    public ChildrenDeletable guaranteed() {
         guaranteed = true;
         return this;
     }
 
     @Override
-    public BackgroundVersionable deletingChildrenIfNeeded()
-    {
+    public BackgroundVersionable deletingChildrenIfNeeded() {
         deletingChildrenIfNeeded = true;
         return this;
     }
 
     @Override
-    public BackgroundPathable<Void> withVersion(int version)
-    {
+    public BackgroundPathable<Void> withVersion(int version) {
         this.version = version;
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground(BackgroundCallback callback, Object context)
-    {
+    public Pathable<Void> inBackground(BackgroundCallback callback, Object context) {
         backgrounding = new Backgrounding(callback, context);
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground(BackgroundCallback callback, Object context, Executor executor)
-    {
+    public Pathable<Void> inBackground(BackgroundCallback callback, Object context, Executor executor) {
         backgrounding = new Backgrounding(client, callback, context, executor);
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground(BackgroundCallback callback)
-    {
+    public Pathable<Void> inBackground(BackgroundCallback callback) {
         backgrounding = new Backgrounding(callback);
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground(BackgroundCallback callback, Executor executor)
-    {
+    public Pathable<Void> inBackground(BackgroundCallback callback, Executor executor) {
         backgrounding = new Backgrounding(client, callback, executor);
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground()
-    {
+    public Pathable<Void> inBackground() {
         backgrounding = new Backgrounding(true);
         return this;
     }
 
     @Override
-    public Pathable<Void> inBackground(Object context)
-    {
+    public Pathable<Void> inBackground(Object context) {
         backgrounding = new Backgrounding(context);
         return this;
     }
 
     @Override
-    public void performBackgroundOperation(final OperationAndData<String> operationAndData) throws Exception
-    {
+    public void performBackgroundOperation(final OperationAndData<String> operationAndData) throws Exception {
         final TimeTrace trace = client.getZookeeperClient().startTracer("DeleteBuilderImpl-Background");
         client.getZooKeeper().delete
-            (
-                operationAndData.getData(),
-                version,
-                new AsyncCallback.VoidCallback()
-                {
-                    @Override
-                    public void processResult(int rc, String path, Object ctx)
-                    {
-                        trace.commit();
-                        if ( (rc == KeeperException.Code.NOTEMPTY.intValue()) && deletingChildrenIfNeeded )
-                        {
-                            backgroundDeleteChildrenThenNode(operationAndData);
-                        }
-                        else
-                        {
-                            CuratorEvent event = new CuratorEventImpl(client, CuratorEventType.DELETE, rc, path, null, ctx, null, null, null, null, null);
-                            client.processBackgroundOperation(operationAndData, event);
-                        }
-                    }
-                },
-                backgrounding.getContext()
-            );
+                (
+                        operationAndData.getData(),
+                        version,
+                        new AsyncCallback.VoidCallback() {
+                            @Override
+                            public void processResult(int rc, String path, Object ctx) {
+                                trace.commit();
+                                if ((rc == KeeperException.Code.NOTEMPTY.intValue()) && deletingChildrenIfNeeded) {
+                                    backgroundDeleteChildrenThenNode(operationAndData);
+                                } else {
+                                    CuratorEvent event = new CuratorEventImpl(client, CuratorEventType.DELETE, rc, path, null, ctx, null, null, null, null, null);
+                                    client.processBackgroundOperation(operationAndData, event);
+                                }
+                            }
+                        },
+                        backgrounding.getContext()
+                );
     }
 
-    private void backgroundDeleteChildrenThenNode(final OperationAndData<String> mainOperationAndData)
-    {
-        BackgroundOperation<String> operation = new BackgroundOperation<String>()
-        {
+    private void backgroundDeleteChildrenThenNode(final OperationAndData<String> mainOperationAndData) {
+        BackgroundOperation<String> operation = new BackgroundOperation<String>() {
             @Override
-            public void performBackgroundOperation(OperationAndData<String> dummy) throws Exception
-            {
-                try
-                {
+            public void performBackgroundOperation(OperationAndData<String> dummy) throws Exception {
+                try {
                     ZKPaths.deleteChildren(client.getZooKeeper(), mainOperationAndData.getData(), false);
-                }
-                catch ( KeeperException e )
-                {
+                } catch (KeeperException e) {
                     // ignore
                 }
                 client.queueOperation(mainOperationAndData);
@@ -191,77 +165,56 @@ class DeleteBuilderImpl implements DeleteBuilder, BackgroundOperation<String>
     }
 
     @Override
-    public Void forPath(String path) throws Exception
-    {
+    public Void forPath(String path) throws Exception {
         final String unfixedPath = path;
         path = client.fixForNamespace(path);
 
-        if ( backgrounding.inBackground() )
-        {
+        if (backgrounding.inBackground()) {
             OperationAndData.ErrorCallback<String> errorCallback = null;
-            if ( guaranteed )
-            {
-                errorCallback = new OperationAndData.ErrorCallback<String>()
-                {
+            if (guaranteed) {
+                errorCallback = new OperationAndData.ErrorCallback<String>() {
                     @Override
-                    public void retriesExhausted(OperationAndData<String> operationAndData)
-                    {
+                    public void retriesExhausted(OperationAndData<String> operationAndData) {
                         client.getFailedDeleteManager().addFailedDelete(unfixedPath);
                     }
                 };
             }
             client.processBackgroundOperation(new OperationAndData<String>(this, path, backgrounding.getCallback(), errorCallback, backgrounding.getContext()), null);
-        }
-        else
-        {
+        } else {
             pathInForeground(path, unfixedPath);
         }
         return null;
     }
 
-    protected int getVersion()
-    {
+    protected int getVersion() {
         return version;
     }
 
-    private void pathInForeground(final String path, String unfixedPath) throws Exception
-    {
+    private void pathInForeground(final String path, String unfixedPath) throws Exception {
         TimeTrace trace = client.getZookeeperClient().startTracer("DeleteBuilderImpl-Foreground");
-        try
-        {
+        try {
             RetryLoop.callWithRetry
-                (
-                    client.getZookeeperClient(),
-                    new Callable<Void>()
-                    {
-                        @Override
-                        public Void call() throws Exception
-                        {
-                            try
-                            {
-                                client.getZooKeeper().delete(path, version);
-                            }
-                            catch ( KeeperException.NotEmptyException e )
-                            {
-                                if ( deletingChildrenIfNeeded )
-                                {
-                                    ZKPaths.deleteChildren(client.getZooKeeper(), path, true);
-                                }
-                                else
-                                {
-                                    throw e;
+                    (
+                            client.getZookeeperClient(),
+                            new Callable<Void>() {
+                                @Override
+                                public Void call() throws Exception {
+                                    try {
+                                        client.getZooKeeper().delete(path, version);
+                                    } catch (KeeperException.NotEmptyException e) {
+                                        if (deletingChildrenIfNeeded) {
+                                            ZKPaths.deleteChildren(client.getZooKeeper(), path, true);
+                                        } else {
+                                            throw e;
+                                        }
+                                    }
+                                    return null;
                                 }
                             }
-                            return null;
-                        }
-                    }
-                );
-        }
-        catch ( Exception e )
-        {
+                    );
+        } catch (Exception e) {
             //Only retry a guaranteed delete if it's a retryable error
-            if( (RetryLoop.isRetryException(e) || (e instanceof InterruptedException)) && guaranteed )
-            {
+            if ((RetryLoop.isRetryException(e) || (e instanceof InterruptedException)) && guaranteed) {
                 client.getFailedDeleteManager().addFailedDelete(unfixedPath);
             }
             throw e;

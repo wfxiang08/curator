@@ -20,8 +20,7 @@ package org.apache.curator.framework.api;
 
 import org.apache.zookeeper.Watcher;
 
-public interface Watchable<T>
-{
+public interface Watchable<T> {
     /**
      * Have the operation set a watch
      *

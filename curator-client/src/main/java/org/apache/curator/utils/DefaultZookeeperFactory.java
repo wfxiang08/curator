@@ -21,11 +21,11 @@ package org.apache.curator.utils;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
-public class DefaultZookeeperFactory implements ZookeeperFactory
-{
+public class DefaultZookeeperFactory implements ZookeeperFactory {
     @Override
-    public ZooKeeper newZooKeeper(String connectString, int sessionTimeout, Watcher watcher, boolean canBeReadOnly) throws Exception
-    {
+    public ZooKeeper newZooKeeper(String connectString, int sessionTimeout,
+                                  Watcher watcher, boolean canBeReadOnly) throws Exception {
+        // 默认的创建zk, 没有授权
         return new ZooKeeper(connectString, sessionTimeout, watcher, canBeReadOnly);
     }
 }

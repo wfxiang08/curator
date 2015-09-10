@@ -26,6 +26,7 @@ import org.apache.curator.framework.listen.ListenerContainer;
 import org.apache.curator.utils.ThreadUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -40,22 +41,16 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Used internally to manage connection state
  */
-public class ConnectionStateManager implements Closeable
-{
+public class ConnectionStateManager implements Closeable {
     private static final int QUEUE_SIZE;
 
-    static
-    {
+    static {
         int size = 25;
         String property = System.getProperty("ConnectionStateManagerSize", null);
-        if ( property != null )
-        {
-            try
-            {
+        if (property != null) {
+            try {
                 size = Integer.parseInt(property);
-            }
-            catch ( NumberFormatException ignore )
-            {
+            } catch (NumberFormatException ignore) {
                 // ignore
             }
         }
@@ -73,8 +68,7 @@ public class ConnectionStateManager implements Closeable
     // guarded by sync
     private ConnectionState currentConnectionState;
 
-    private enum State
-    {
+    private enum State {
         LATENT,
         STARTED,
         CLOSED
@@ -84,11 +78,9 @@ public class ConnectionStateManager implements Closeable
      * @param client        the client
      * @param threadFactory thread factory to use or null for a default
      */
-    public ConnectionStateManager(CuratorFramework client, ThreadFactory threadFactory)
-    {
+    public ConnectionStateManager(CuratorFramework client, ThreadFactory threadFactory) {
         this.client = client;
-        if ( threadFactory == null )
-        {
+        if (threadFactory == null) {
             threadFactory = ThreadUtils.newThreadFactory("ConnectionStateManager");
         }
         service = Executors.newSingleThreadExecutor(threadFactory);
@@ -97,29 +89,24 @@ public class ConnectionStateManager implements Closeable
     /**
      * Start the manager
      */
-    public void start()
-    {
+    public void start() {
         Preconditions.checkState(state.compareAndSet(State.LATENT, State.STARTED), "Cannot be started more than once");
 
         service.submit
-            (
-                new Callable<Object>()
-                {
-                    @Override
-                    public Object call() throws Exception
-                    {
-                        processEvents();
-                        return null;
-                    }
-                }
-            );
+                (
+                        new Callable<Object>() {
+                            @Override
+                            public Object call() throws Exception {
+                                processEvents();
+                                return null;
+                            }
+                        }
+                );
     }
 
     @Override
-    public void close()
-    {
-        if ( state.compareAndSet(State.STARTED, State.CLOSED) )
-        {
+    public void close() {
+        if (state.compareAndSet(State.STARTED, State.CLOSED)) {
             service.shutdownNow();
             listeners.clear();
         }
@@ -130,25 +117,21 @@ public class ConnectionStateManager implements Closeable
      *
      * @return listenable
      */
-    public ListenerContainer<ConnectionStateListener> getListenable()
-    {
+    public ListenerContainer<ConnectionStateListener> getListenable() {
         return listeners;
     }
 
     /**
      * Change to {@link ConnectionState#SUSPENDED} only if not already suspended and not lost
-     * 
+     *
      * @return true if connection is set to SUSPENDED
      */
-    public synchronized boolean setToSuspended()
-    {
-        if ( state.get() != State.STARTED )
-        {
+    public synchronized boolean setToSuspended() {
+        if (state.get() != State.STARTED) {
             return false;
         }
 
-        if ( (currentConnectionState == ConnectionState.LOST) || (currentConnectionState == ConnectionState.SUSPENDED) )
-        {
+        if ((currentConnectionState == ConnectionState.LOST) || (currentConnectionState == ConnectionState.SUSPENDED)) {
             return false;
         }
 
@@ -165,24 +148,20 @@ public class ConnectionStateManager implements Closeable
      * @param newConnectionState new state
      * @return true if the state actually changed, false if it was already at that state
      */
-    public synchronized boolean addStateChange(ConnectionState newConnectionState)
-    {
-        if ( state.get() != State.STARTED )
-        {
+    public synchronized boolean addStateChange(ConnectionState newConnectionState) {
+        if (state.get() != State.STARTED) {
             return false;
         }
 
         ConnectionState previousState = currentConnectionState;
-        if ( previousState == newConnectionState )
-        {
+        if (previousState == newConnectionState) {
             return false;
         }
         currentConnectionState = newConnectionState;
 
         ConnectionState localState = newConnectionState;
         boolean isNegativeMessage = ((newConnectionState == ConnectionState.LOST) || (newConnectionState == ConnectionState.SUSPENDED) || (newConnectionState == ConnectionState.READ_ONLY));
-        if ( !isNegativeMessage && initialConnectMessageSent.compareAndSet(false, true) )
-        {
+        if (!isNegativeMessage && initialConnectMessageSent.compareAndSet(false, true)) {
             localState = ConnectionState.CONNECTED;
         }
 
@@ -191,80 +170,63 @@ public class ConnectionStateManager implements Closeable
         return true;
     }
 
-    public synchronized boolean blockUntilConnected(int maxWaitTime, TimeUnit units) throws InterruptedException
-    {
+    public synchronized boolean blockUntilConnected(int maxWaitTime, TimeUnit units) throws InterruptedException {
         long startTime = System.currentTimeMillis();
 
         boolean hasMaxWait = (units != null);
         long maxWaitTimeMs = hasMaxWait ? TimeUnit.MILLISECONDS.convert(maxWaitTime, units) : 0;
 
-        while ( !isConnected() )
-        {
-            if ( hasMaxWait )
-            {
+        while (!isConnected()) {
+            if (hasMaxWait) {
                 long waitTime = maxWaitTimeMs - (System.currentTimeMillis() - startTime);
-                if ( waitTime <= 0 )
-                {
+                if (waitTime <= 0) {
                     return isConnected();
                 }
 
                 wait(waitTime);
-            }
-            else
-            {
+            } else {
                 wait();
             }
         }
         return isConnected();
     }
 
-    public synchronized boolean isConnected()
-    {
+    public synchronized boolean isConnected() {
         return (currentConnectionState != null) && currentConnectionState.isConnected();
     }
 
-    private void postState(ConnectionState state)
-    {
+    private void postState(ConnectionState state) {
         log.info("State change: " + state);
 
         notifyAll();
 
-        while ( !eventQueue.offer(state) )
-        {
+        while (!eventQueue.offer(state)) {
             eventQueue.poll();
             log.warn("ConnectionStateManager queue full - dropping events to make room");
         }
     }
 
-    private void processEvents()
-    {
-        try
-        {
-            while ( !Thread.currentThread().isInterrupted() )
-            {
+    private void processEvents() {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
                 final ConnectionState newState = eventQueue.take();
 
-                if ( listeners.size() == 0 )
-                {
+                if (listeners.size() == 0) {
                     log.warn("There are no ConnectionStateListeners registered.");
                 }
 
                 listeners.forEach
-                    (
-                        new Function<ConnectionStateListener, Void>()
-                        {
-                            @Override
-                            public Void apply(ConnectionStateListener listener)
-                            {
-                                listener.stateChanged(client, newState);
-                                return null;
-                            }
-                        }
-                    );
+                        (
+                                new Function<ConnectionStateListener, Void>() {
+                                    @Override
+                                    public Void apply(ConnectionStateListener listener) {
+                                        listener.stateChanged(client, newState);
+                                        return null;
+                                    }
+                                }
+                        );
             }
-        }
-        catch ( InterruptedException e )
-        {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }

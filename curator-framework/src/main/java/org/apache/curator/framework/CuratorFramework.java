@@ -34,8 +34,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Zookeeper framework-style client
  */
-public interface CuratorFramework extends Closeable
-{
+public interface CuratorFramework extends Closeable {
     /**
      * Start the client. Most mutator methods will not work until the client is started
      */
@@ -78,7 +77,7 @@ public interface CuratorFramework extends Closeable
 
     /**
      * Start an exists builder
-     * <p>
+     * <p/>
      * The builder will return a Stat object as if org.apache.zookeeper.ZooKeeper.exists() were called.  Thus, a null
      * means that it does not exist and an actual Stat object means it does exist.
      *
@@ -227,20 +226,22 @@ public interface CuratorFramework extends Closeable
      * @param watcher the watcher
      */
     public void clearWatcherReferences(Watcher watcher);
-        
+
     /**
      * Block until a connection to ZooKeeper is available or the maxWaitTime has been exceeded
+     *
      * @param maxWaitTime The maximum wait time. Specify a value &lt;= 0 to wait indefinitely
-     * @param units The time units for the maximum wait time.
+     * @param units       The time units for the maximum wait time.
      * @return True if connection has been established, false otherwise.
      * @throws InterruptedException If interrupted while waiting
      */
     public boolean blockUntilConnected(int maxWaitTime, TimeUnit units) throws InterruptedException;
-    
+
     /**
      * Block until a connection to ZooKeeper is available. This method will not return until a
      * connection is available or it is interrupted, in which case an InterruptedException will
      * be thrown
+     *
      * @throws InterruptedException If interrupted while waiting
      */
     public void blockUntilConnected() throws InterruptedException;

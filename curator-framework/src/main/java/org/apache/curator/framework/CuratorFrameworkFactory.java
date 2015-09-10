@@ -36,6 +36,7 @@ import org.apache.curator.utils.ZookeeperFactory;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -46,8 +47,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Factory methods for creating framework-style clients
  */
-public class CuratorFrameworkFactory
-{
+public class CuratorFrameworkFactory {
     private static final int DEFAULT_SESSION_TIMEOUT_MS = Integer.getInteger("curator-default-session-timeout", 60 * 1000);
     private static final int DEFAULT_CONNECTION_TIMEOUT_MS = Integer.getInteger("curator-default-connection-timeout", 15 * 1000);
 
@@ -56,16 +56,15 @@ public class CuratorFrameworkFactory
     private static final CompressionProvider DEFAULT_COMPRESSION_PROVIDER = new GzipCompressionProvider();
     private static final DefaultZookeeperFactory DEFAULT_ZOOKEEPER_FACTORY = new DefaultZookeeperFactory();
     private static final DefaultACLProvider DEFAULT_ACL_PROVIDER = new DefaultACLProvider();
-    private static final long DEFAULT_INACTIVE_THRESHOLD_MS = (int)TimeUnit.MINUTES.toMillis(3);
-    private static final int DEFAULT_CLOSE_WAIT_MS = (int)TimeUnit.SECONDS.toMillis(1);
+    private static final long DEFAULT_INACTIVE_THRESHOLD_MS = (int) TimeUnit.MINUTES.toMillis(3);
+    private static final int DEFAULT_CLOSE_WAIT_MS = (int) TimeUnit.SECONDS.toMillis(1);
 
     /**
      * Return a new builder that builds a CuratorFramework
      *
      * @return new builder
      */
-    public static Builder builder()
-    {
+    public static Builder builder() {
         return new Builder();
     }
 
@@ -76,8 +75,7 @@ public class CuratorFrameworkFactory
      * @param retryPolicy   retry policy to use
      * @return client
      */
-    public static CuratorFramework newClient(String connectString, RetryPolicy retryPolicy)
-    {
+    public static CuratorFramework newClient(String connectString, RetryPolicy retryPolicy) {
         return newClient(connectString, DEFAULT_SESSION_TIMEOUT_MS, DEFAULT_CONNECTION_TIMEOUT_MS, retryPolicy);
     }
 
@@ -90,18 +88,16 @@ public class CuratorFrameworkFactory
      * @param retryPolicy         retry policy to use
      * @return client
      */
-    public static CuratorFramework newClient(String connectString, int sessionTimeoutMs, int connectionTimeoutMs, RetryPolicy retryPolicy)
-    {
+    public static CuratorFramework newClient(String connectString, int sessionTimeoutMs, int connectionTimeoutMs, RetryPolicy retryPolicy) {
         return builder().
-            connectString(connectString).
-            sessionTimeoutMs(sessionTimeoutMs).
-            connectionTimeoutMs(connectionTimeoutMs).
-            retryPolicy(retryPolicy).
-            build();
+                connectString(connectString).
+                sessionTimeoutMs(sessionTimeoutMs).
+                connectionTimeoutMs(connectionTimeoutMs).
+                retryPolicy(retryPolicy).
+                build();
     }
 
-    public static class Builder
-    {
+    public static class Builder {
         private EnsembleProvider ensembleProvider;
         private int sessionTimeoutMs = DEFAULT_SESSION_TIMEOUT_MS;
         private int connectionTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
@@ -122,8 +118,7 @@ public class CuratorFrameworkFactory
          *
          * @return new CuratorFramework
          */
-        public CuratorFramework build()
-        {
+        public CuratorFramework build() {
             return new CuratorFrameworkImpl(this);
         }
 
@@ -135,8 +130,7 @@ public class CuratorFrameworkFactory
          *
          * @return temp instance
          */
-        public CuratorTempFramework buildTemp()
-        {
+        public CuratorTempFramework buildTemp() {
             return buildTemp(DEFAULT_INACTIVE_THRESHOLD_MS, TimeUnit.MILLISECONDS);
         }
 
@@ -150,22 +144,20 @@ public class CuratorFrameworkFactory
          * @param unit              threshold unit
          * @return temp instance
          */
-        public CuratorTempFramework buildTemp(long inactiveThreshold, TimeUnit unit)
-        {
+        public CuratorTempFramework buildTemp(long inactiveThreshold, TimeUnit unit) {
             return new CuratorTempFrameworkImpl(this, unit.toMillis(inactiveThreshold));
         }
 
         /**
          * Add connection authorization
-         * 
+         * <p/>
          * Subsequent calls to this method overwrite the prior calls.
          *
          * @param scheme the scheme
          * @param auth   the auth bytes
          * @return this
          */
-        public Builder authorization(String scheme, byte[] auth)
-        {
+        public Builder authorization(String scheme, byte[] auth) {
             return authorization(ImmutableList.of(new AuthInfo(scheme, (auth != null) ? Arrays.copyOf(auth, auth.length) : null)));
         }
 
@@ -178,8 +170,7 @@ public class CuratorFrameworkFactory
          * @param authInfos list of {@link AuthInfo} objects with scheme and auth
          * @return this
          */
-        public Builder authorization(List<AuthInfo> authInfos)
-        {
+        public Builder authorization(List<AuthInfo> authInfos) {
             this.authInfos = ImmutableList.copyOf(authInfos);
             return this;
         }
@@ -191,8 +182,8 @@ public class CuratorFrameworkFactory
          * @param connectString list of servers to connect to
          * @return this
          */
-        public Builder connectString(String connectString)
-        {
+        public Builder connectString(String connectString) {
+            // 默认的EnsembleProvider: FixedEnsembleProvider, 基本上啥都不做，给啥返回啥
             ensembleProvider = new FixedEnsembleProvider(connectString);
             return this;
         }
@@ -204,8 +195,7 @@ public class CuratorFrameworkFactory
          * @param ensembleProvider the ensemble provider to use
          * @return this
          */
-        public Builder ensembleProvider(EnsembleProvider ensembleProvider)
-        {
+        public Builder ensembleProvider(EnsembleProvider ensembleProvider) {
             this.ensembleProvider = ensembleProvider;
             return this;
         }
@@ -218,8 +208,7 @@ public class CuratorFrameworkFactory
          * @param defaultData new default data to use
          * @return this
          */
-        public Builder defaultData(byte[] defaultData)
-        {
+        public Builder defaultData(byte[] defaultData) {
             this.defaultData = (defaultData != null) ? Arrays.copyOf(defaultData, defaultData.length) : null;
             return this;
         }
@@ -232,8 +221,7 @@ public class CuratorFrameworkFactory
          * @param namespace the namespace
          * @return this
          */
-        public Builder namespace(String namespace)
-        {
+        public Builder namespace(String namespace) {
             this.namespace = namespace;
             return this;
         }
@@ -242,8 +230,7 @@ public class CuratorFrameworkFactory
          * @param sessionTimeoutMs session timeout
          * @return this
          */
-        public Builder sessionTimeoutMs(int sessionTimeoutMs)
-        {
+        public Builder sessionTimeoutMs(int sessionTimeoutMs) {
             this.sessionTimeoutMs = sessionTimeoutMs;
             return this;
         }
@@ -252,8 +239,7 @@ public class CuratorFrameworkFactory
          * @param connectionTimeoutMs connection timeout
          * @return this
          */
-        public Builder connectionTimeoutMs(int connectionTimeoutMs)
-        {
+        public Builder connectionTimeoutMs(int connectionTimeoutMs) {
             this.connectionTimeoutMs = connectionTimeoutMs;
             return this;
         }
@@ -262,8 +248,7 @@ public class CuratorFrameworkFactory
          * @param maxCloseWaitMs time to wait during close to join background threads
          * @return this
          */
-        public Builder maxCloseWaitMs(int maxCloseWaitMs)
-        {
+        public Builder maxCloseWaitMs(int maxCloseWaitMs) {
             this.maxCloseWaitMs = maxCloseWaitMs;
             return this;
         }
@@ -272,8 +257,7 @@ public class CuratorFrameworkFactory
          * @param retryPolicy retry policy to use
          * @return this
          */
-        public Builder retryPolicy(RetryPolicy retryPolicy)
-        {
+        public Builder retryPolicy(RetryPolicy retryPolicy) {
             this.retryPolicy = retryPolicy;
             return this;
         }
@@ -282,8 +266,7 @@ public class CuratorFrameworkFactory
          * @param threadFactory thread factory used to create Executor Services
          * @return this
          */
-        public Builder threadFactory(ThreadFactory threadFactory)
-        {
+        public Builder threadFactory(ThreadFactory threadFactory) {
             this.threadFactory = threadFactory;
             return this;
         }
@@ -292,8 +275,7 @@ public class CuratorFrameworkFactory
          * @param compressionProvider the compression provider
          * @return this
          */
-        public Builder compressionProvider(CompressionProvider compressionProvider)
-        {
+        public Builder compressionProvider(CompressionProvider compressionProvider) {
             this.compressionProvider = compressionProvider;
             return this;
         }
@@ -302,8 +284,7 @@ public class CuratorFrameworkFactory
          * @param zookeeperFactory the zookeeper factory to use
          * @return this
          */
-        public Builder zookeeperFactory(ZookeeperFactory zookeeperFactory)
-        {
+        public Builder zookeeperFactory(ZookeeperFactory zookeeperFactory) {
             this.zookeeperFactory = zookeeperFactory;
             return this;
         }
@@ -312,8 +293,7 @@ public class CuratorFrameworkFactory
          * @param aclProvider a provider for ACLs
          * @return this
          */
-        public Builder aclProvider(ACLProvider aclProvider)
-        {
+        public Builder aclProvider(ACLProvider aclProvider) {
             this.aclProvider = aclProvider;
             return this;
         }
@@ -325,8 +305,7 @@ public class CuratorFrameworkFactory
          *                      for details
          * @return this
          */
-        public Builder canBeReadOnly(boolean canBeReadOnly)
-        {
+        public Builder canBeReadOnly(boolean canBeReadOnly) {
             this.canBeReadOnly = canBeReadOnly;
             return this;
         }
@@ -337,148 +316,117 @@ public class CuratorFrameworkFactory
          *
          * @return this
          */
-        public Builder dontUseContainerParents()
-        {
+        public Builder dontUseContainerParents() {
             this.useContainerParentsIfAvailable = false;
             return this;
         }
 
-        public ACLProvider getAclProvider()
-        {
+        public ACLProvider getAclProvider() {
             return aclProvider;
         }
 
-        public ZookeeperFactory getZookeeperFactory()
-        {
+        public ZookeeperFactory getZookeeperFactory() {
             return zookeeperFactory;
         }
 
-        public CompressionProvider getCompressionProvider()
-        {
+        public CompressionProvider getCompressionProvider() {
             return compressionProvider;
         }
 
-        public ThreadFactory getThreadFactory()
-        {
+        public ThreadFactory getThreadFactory() {
             return threadFactory;
         }
 
-        public EnsembleProvider getEnsembleProvider()
-        {
+        public EnsembleProvider getEnsembleProvider() {
             return ensembleProvider;
         }
 
-        public int getSessionTimeoutMs()
-        {
+        public int getSessionTimeoutMs() {
             return sessionTimeoutMs;
         }
 
-        public int getConnectionTimeoutMs()
-        {
+        public int getConnectionTimeoutMs() {
             return connectionTimeoutMs;
         }
 
-        public int getMaxCloseWaitMs()
-        {
+        public int getMaxCloseWaitMs() {
             return maxCloseWaitMs;
         }
 
-        public RetryPolicy getRetryPolicy()
-        {
+        public RetryPolicy getRetryPolicy() {
             return retryPolicy;
         }
 
-        public String getNamespace()
-        {
+        public String getNamespace() {
             return namespace;
         }
 
-        public boolean useContainerParentsIfAvailable()
-        {
+        public boolean useContainerParentsIfAvailable() {
             return useContainerParentsIfAvailable;
         }
 
         @Deprecated
-        public String getAuthScheme()
-        {
+        public String getAuthScheme() {
             int qty = (authInfos != null) ? authInfos.size() : 0;
-            switch ( qty )
-            {
-                case 0:
-                {
+            switch (qty) {
+                case 0: {
                     return null;
                 }
 
-                case 1:
-                {
+                case 1: {
                     return authInfos.get(0).scheme;
                 }
 
-                default:
-                {
+                default: {
                     throw new IllegalStateException("More than 1 auth has been added");
                 }
             }
         }
 
         @Deprecated
-        public byte[] getAuthValue()
-        {
+        public byte[] getAuthValue() {
             int qty = (authInfos != null) ? authInfos.size() : 0;
-            switch ( qty )
-            {
-                case 0:
-                {
+            switch (qty) {
+                case 0: {
                     return null;
                 }
 
-                case 1:
-                {
+                case 1: {
                     byte[] bytes = authInfos.get(0).getAuth();
                     return (bytes != null) ? Arrays.copyOf(bytes, bytes.length) : null;
                 }
 
-                default:
-                {
+                default: {
                     throw new IllegalStateException("More than 1 auth has been added");
                 }
             }
         }
 
-        public List<AuthInfo> getAuthInfos()
-        {
+        public List<AuthInfo> getAuthInfos() {
             return authInfos;
         }
 
-        public byte[] getDefaultData()
-        {
+        public byte[] getDefaultData() {
             return defaultData;
         }
 
-        public boolean canBeReadOnly()
-        {
+        public boolean canBeReadOnly() {
             return canBeReadOnly;
         }
 
-        private Builder()
-        {
+        private Builder() {
         }
     }
 
-    private static byte[] getLocalAddress()
-    {
-        try
-        {
+    private static byte[] getLocalAddress() {
+        try {
             return InetAddress.getLocalHost().getHostAddress().getBytes();
-        }
-        catch ( UnknownHostException ignore )
-        {
+        } catch (UnknownHostException ignore) {
             // ignore
         }
         return new byte[0];
     }
 
-    private CuratorFrameworkFactory()
-    {
+    private CuratorFrameworkFactory() {
     }
 }
